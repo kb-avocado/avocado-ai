@@ -1,0 +1,23 @@
+# 환경변수 — DB 계정, OpenAI API 키. 절대 커밋 금지
+.env
+.env.local
+
+# 온보딩 문서는 레포 밖(../ONBOARDING.md)에 둔다
+ONBOARDING.md
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+
+# 생성 결과 로그
+out/
+*.log
+
+# IDE
+.idea/
+.vscode/
