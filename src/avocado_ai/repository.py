@@ -26,6 +26,11 @@ WHERE r.report_year = %(year)s AND r.report_month = %(month)s
   AND (r.child_advice IS NULL OR r.parent_advice IS NULL)
 """
 
+# --force 용. 이미 채워진 행까지 포함한다.
+_SELECT_TARGETS_ALL = _SELECT_TARGETS.replace(
+    "  AND (r.child_advice IS NULL OR r.parent_advice IS NULL)\n", ""
+)
+
 _UPDATE_ADVICE = """
 UPDATE child_spending_reports
 SET child_advice = %(child_advice)s, parent_advice = %(parent_advice)s
@@ -45,10 +50,15 @@ def find_targets(
     year: int,
     month: int,
     child_id: int | None = None,
+    include_done: bool = False,
 ) -> list[dict[str, Any]]:
-    """조언이 아직 안 채워진 행을 가져온다. child_id 를 주면 그 아이만."""
+    """조언이 아직 안 채워진 행을 가져온다. child_id 를 주면 그 아이만.
+
+    include_done=True 면 이미 채워진 행까지 포함한다. 시연 데이터를 만들거나
+    프롬프트를 고쳐가며 다시 생성할 때 쓴다. 평소 배치에서는 쓰지 않는다.
+    """
     prev_year, prev_month = previous_year_month(year, month)
-    sql = _SELECT_TARGETS
+    sql = _SELECT_TARGETS_ALL if include_done else _SELECT_TARGETS
     params: dict[str, Any] = {
         "year": year,
         "month": month,

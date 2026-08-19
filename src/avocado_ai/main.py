@@ -133,14 +133,24 @@ def cmd_check(cfg: config_module.Config) -> int:
         print("\n  리포트 데이터가 하나도 없다. 백엔드 배치가 아직 안 돌았다는 뜻이다.")
         return 0
 
-    print("\n  월별 리포트 현황:")
-    print("    연월      건수   child_advice NULL   parent_advice NULL")
+    print("\n  월별 리포트 현황 (채워진 건수 / 전체):")
+    print("    연월        전체   child_advice   parent_advice   남은 대상")
     for m in info["months"]:
         ym = f"{m['report_year']}-{m['report_month']:02d}"
+        total = int(m["reports"])
+        child_filled = total - int(m["child_advice_null"] or 0)
+        parent_filled = total - int(m["parent_advice_null"] or 0)
+        # 둘 중 하나라도 비어 있으면 대상이다 (find_targets 와 같은 조건)
+        remaining = total - min(child_filled, parent_filled)
         print(
-            f"    {ym}  {m['reports']:>5}   {int(m['child_advice_null'] or 0):>17}"
-            f"   {int(m['parent_advice_null'] or 0):>18}"
+            f"    {ym}  {total:>6}   {child_filled:>6}/{total:<6} {parent_filled:>6}/{total:<8}"
+            f"  {remaining:>5}건"
         )
+
+    print(
+        "\n  ※ child_advice 에 값이 있어도 AI 조언이 아닐 수 있다.\n"
+        "     백엔드 배치가 유형 설명 문구를 넣어두기 때문이다."
+    )
 
     year, month = previous_month_in_seoul()
     print(f"\n  기본 대상(지난달) = {year}-{month:02d}")
@@ -179,14 +189,20 @@ def cmd_run(cfg: config_module.Config, args: argparse.Namespace) -> int:
         year, month = previous_month_in_seoul()
 
     with db.connect(cfg.db) as conn:
-        targets = repository.find_targets(conn, year, month, args.child_id)
+        targets = repository.find_targets(
+            conn, year, month, args.child_id, include_done=args.force
+        )
         if args.limit:
             targets = targets[: args.limit]
 
         mode = "DRY RUN — DB 안 건드림" if args.dry_run else "실제 UPDATE"
-        print(f"대상 {year}-{month:02d} / {len(targets)}건 / 모델 {cfg.openai.model} / {mode}\n")
+        scope = "이미 채워진 행 포함(--force)" if args.force else "미완료분만"
+        print(
+            f"대상 {year}-{month:02d} / {len(targets)}건 ({scope}) "
+            f"/ 모델 {cfg.openai.model} / {mode}\n"
+        )
         if not targets:
-            print("채울 행이 없다. --check 로 데이터 상태를 먼저 보라.")
+            print("채울 행이 없다. 이미 다 채워졌다면 --force 로 다시 생성할 수 있다.")
             return 0
 
         client = build_client(cfg.openai)
@@ -227,6 +243,11 @@ def main() -> int:
     parser.add_argument("--child-id", type=int, help="특정 아이 한 명만 처리")
     parser.add_argument("--limit", type=int, help="앞에서 N건만 처리")
     parser.add_argument("--dry-run", action="store_true", help="생성만 하고 UPDATE 하지 않는다")
+    parser.add_argument(
+        "--force",
+        action="store_true",
+        help="이미 조언이 채워진 행도 다시 생성한다 (시연 데이터 준비용)",
+    )
     parser.add_argument(
         "--model",
         help="OPENAI_MODEL 을 무시하고 이 모델로 돈다 (예: gpt-5-nano, gpt-4o-mini)",
