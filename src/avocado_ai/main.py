@@ -203,9 +203,14 @@ def cmd_sample(cfg: config_module.Config, show_prompt: bool) -> int:
 
 
 def cmd_run(cfg: config_module.Config, args: argparse.Namespace) -> int:
-    year, month = args.year, args.month
-    if year is None or month is None:
-        year, month = previous_month_in_seoul()
+    if args.all_months:
+        year = month = None
+        period = "전체 기간"
+    else:
+        year, month = args.year, args.month
+        if year is None or month is None:
+            year, month = previous_month_in_seoul()
+        period = f"{year}-{month:02d}"
 
     with db.connect(cfg.db) as conn:
         targets = repository.find_targets(
@@ -216,8 +221,9 @@ def cmd_run(cfg: config_module.Config, args: argparse.Namespace) -> int:
 
         mode = "DRY RUN — DB 안 건드림" if args.dry_run else "실제 UPDATE"
         scope = "이미 채워진 행 포함(--force)" if args.force else "미완료분만"
+        who = f" / child_id={args.child_id}" if args.child_id else ""
         print(
-            f"대상 {year}-{month:02d} / {len(targets)}건 ({scope}) "
+            f"대상 {period}{who} / {len(targets)}건 ({scope}) "
             f"/ 모델 {cfg.openai.model} / {mode}\n"
         )
         if not targets:
@@ -268,6 +274,11 @@ def main() -> int:
     parser.add_argument("--year", type=int, help="대상 연도 (기본: 지난달)")
     parser.add_argument("--month", type=int, help="대상 월 (기본: 지난달)")
     parser.add_argument("--child-id", type=int, help="특정 아이 한 명만 처리")
+    parser.add_argument(
+        "--all-months",
+        action="store_true",
+        help="특정 월이 아니라 리포트가 있는 모든 달을 처리한다 (--year/--month 무시)",
+    )
     parser.add_argument("--limit", type=int, help="앞에서 N건만 처리")
     parser.add_argument("--dry-run", action="store_true", help="생성만 하고 UPDATE 하지 않는다")
     parser.add_argument(
@@ -297,6 +308,8 @@ def main() -> int:
         return cmd_sample(cfg, args.show_prompt)
     if (args.year is None) != (args.month is None):
         parser.error("--year 와 --month 는 같이 준다")
+    if args.all_months and (args.year or args.month):
+        parser.error("--all-months 는 --year/--month 와 같이 쓸 수 없다")
     return cmd_run(cfg, args)
 
 

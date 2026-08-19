@@ -11,9 +11,10 @@ from typing import Any
 
 from .config import AdviceConfig
 
-# 유형별 판정 기준. 모델에게 "왜 이 유형인지" 맥락으로만 준다.
-# 조언에 이 문장을 그대로 되풀이하면 안 된다 (ONBOARDING 4.2).
-TYPE_CRITERIA: dict[str, str] = {
+# 유형별 판정 기준. 평소에는 DB 의 spending_report_types.description 을 그대로 쓴다
+# (report_type_id FK 조인으로 행마다 따라온다). 아래 상수는 --sample 처럼
+# DB 없이 도는 경우의 폴백일 뿐이다. 내용은 DB 값과 같다.
+_TYPE_CRITERIA_FALLBACK: dict[str, str] = {
     "SAVING_DREAMER": "그 달 저금통 목표를 2개 이상 달성",
     "ZERO_SPENDING": "그 달 소비가 0원",
     "FREQUENT_SPARROW": "소비한 날짜가 25일 이상",
@@ -120,6 +121,14 @@ RESPONSE_SCHEMA: dict[str, Any] = {
 }
 
 
+def type_criteria(row: dict[str, Any]) -> str:
+    """이 행이 왜 그 유형이 됐는지. DB 값을 우선 쓰고 없으면 폴백."""
+    from_db = (row.get("type_description") or "").strip()
+    if from_db:
+        return from_db
+    return _TYPE_CRITERIA_FALLBACK.get(row.get("type_code"), "기본값")
+
+
 def suggestion_direction(row: dict[str, Any]) -> str:
     """유형별 제안 방향. ROLLER_COASTER 만 전월 값에 따라 갈린다 (ONBOARDING 7.1)."""
     code = row.get("type_code")
@@ -204,7 +213,7 @@ def build_user_prompt(row: dict[str, Any], cfg: AdviceConfig) -> str:
         "",
         "[소비 유형]",
         f"- {row.get('type_name')} ({code})",
-        f"- 이 유형이 된 이유: {TYPE_CRITERIA.get(code, '기본값')}",
+        f"- 이 유형이 된 이유: {type_criteria(row)}",
         "  (이 문장은 맥락일 뿐이다. 조언에 그대로 옮겨 쓰지 마라.)",
         *_roller_coaster_lines(row),
         "",
