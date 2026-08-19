@@ -19,7 +19,7 @@ from zoneinfo import ZoneInfo
 from . import config as config_module
 from . import db, repository
 from .generator import AdviceGenerationError, build_client, generate
-from .prompt import build_user_prompt, suggestion_direction
+from .prompt import build_system_prompt, build_user_prompt, suggestion_direction
 
 SEOUL = ZoneInfo("Asia/Seoul")
 
@@ -98,6 +98,25 @@ _SAMPLE_ROWS: list[dict[str, Any]] = [
 ]
 
 
+def _print_system_prompt(cfg: config_module.Config) -> None:
+    """모든 행에 동일하게 들어가므로 실행당 한 번만 찍는다."""
+    print("=" * 70)
+    print("SYSTEM PROMPT  (prompt.py: build_system_prompt)")
+    print("=" * 70)
+    print(build_system_prompt(cfg.advice))
+    print("=" * 70)
+    print()
+
+
+def _print_user_prompt(row: dict[str, Any], cfg: config_module.Config) -> None:
+    print("  " + "-" * 66)
+    print("  USER PROMPT  (prompt.py: build_user_prompt)")
+    print("  " + "-" * 66)
+    for line in build_user_prompt(row, cfg.advice).splitlines():
+        print(f"  {line}")
+    print("  " + "-" * 66)
+
+
 def _print_advice(row: dict[str, Any], advice: Any) -> None:
     print(f"  제안 방향 : {suggestion_direction(row)}")
     print(f"  아이용({len(advice.child_advice):>2}자) : {advice.child_advice}")
@@ -160,6 +179,8 @@ def cmd_check(cfg: config_module.Config) -> int:
 def cmd_sample(cfg: config_module.Config, show_prompt: bool) -> int:
     client = build_client(cfg.openai)
     print(f"모델: {cfg.openai.model} — DB 없이 샘플 {len(_SAMPLE_ROWS)}건 생성\n")
+    if show_prompt:
+        _print_system_prompt(cfg)
 
     for row in _SAMPLE_ROWS:
         row = {**row, "report_year": 2026, "report_month": 7}
@@ -169,9 +190,7 @@ def cmd_sample(cfg: config_module.Config, show_prompt: bool) -> int:
         print(f"[{label}] {row['type_name']}")
 
         if show_prompt:
-            print("--- user prompt ---")
-            print(build_user_prompt(row, cfg.advice))
-            print("-------------------")
+            _print_user_prompt(row, cfg)
 
         try:
             advice = generate(client, cfg.openai, cfg.advice, row)
@@ -206,10 +225,14 @@ def cmd_run(cfg: config_module.Config, args: argparse.Namespace) -> int:
             return 0
 
         client = build_client(cfg.openai)
+        if args.show_prompt:
+            _print_system_prompt(cfg)
         ok = failed = 0
 
         for row in targets:
             print(f"[report_id={row['id']}] {row['type_name']} ({row['type_code']})")
+            if args.show_prompt:
+                _print_user_prompt(row, cfg)
             try:
                 advice = generate(client, cfg.openai, cfg.advice, row)
             except AdviceGenerationError as exc:
@@ -237,7 +260,11 @@ def main() -> int:
     )
     parser.add_argument("--check", action="store_true", help="DB 접속과 데이터 상태만 확인하고 끝낸다")
     parser.add_argument("--sample", action="store_true", help="DB 없이 9종 유형 샘플로 생성만 해본다")
-    parser.add_argument("--show-prompt", action="store_true", help="--sample 과 함께: 실제 프롬프트도 출력")
+    parser.add_argument(
+        "--show-prompt",
+        action="store_true",
+        help="모델에 실제로 들어가는 system/user 프롬프트를 그대로 출력한다",
+    )
     parser.add_argument("--year", type=int, help="대상 연도 (기본: 지난달)")
     parser.add_argument("--month", type=int, help="대상 월 (기본: 지난달)")
     parser.add_argument("--child-id", type=int, help="특정 아이 한 명만 처리")
