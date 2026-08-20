@@ -1,0 +1,108 @@
+{
+  // 실행: Ctrl+Shift+B  (기본 빌드 작업으로 잡아뒀다)
+  //      또는 Ctrl+Shift+P → "Tasks: Run Task"
+  //
+  // VS Code 루트가 KB-AVO 이면 아래 cwd 를 "${workspaceFolder}/avocado-ai" 로 바꿀 것.
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "avocado-ai 실행",
+      "detail": "무엇을 실행할지 목록에서 고른다",
+      "type": "shell",
+      "command": "./.venv/bin/python -m avocado_ai.main ${input:mode}",
+      "windows": {
+        "command": ".\\.venv\\Scripts\\python.exe -m avocado_ai.main ${input:mode}"
+      },
+      "options": { "cwd": "${workspaceFolder}" },
+      "group": { "kind": "build", "isDefault": true },
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "clear": true
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "avocado-ai: 직접 입력",
+      "detail": "옵션을 직접 타이핑한다",
+      "type": "shell",
+      "command": "./.venv/bin/python -m avocado_ai.main ${input:freeArgs}",
+      "windows": {
+        "command": ".\\.venv\\Scripts\\python.exe -m avocado_ai.main ${input:freeArgs}"
+      },
+      "options": { "cwd": "${workspaceFolder}" },
+      "presentation": { "reveal": "always", "panel": "dedicated", "clear": true },
+      "problemMatcher": []
+    },
+    {
+      "label": "환경 설치 (처음 받았을 때 1회)",
+      "detail": ".venv 생성 + 의존성 설치. 이후 .env 를 만들어야 한다",
+      "type": "shell",
+      "command": "python3 -m venv .venv && ./.venv/bin/python -m pip install -e .",
+      "windows": {
+        "command": "py -m venv .venv; .\\.venv\\Scripts\\python.exe -m pip install -e ."
+      },
+      "options": { "cwd": "${workspaceFolder}" },
+      "presentation": { "reveal": "always", "panel": "shared" },
+      "problemMatcher": []
+    },
+    {
+      "label": "DB 켜기 (docker compose)",
+      "detail": "백엔드 레포의 compose 로 MySQL 을 띄운다",
+      "type": "shell",
+      "command": "docker compose up -d mysql",
+      "options": { "cwd": "${workspaceFolder}/../avocado-backend" },
+      "presentation": { "reveal": "always", "panel": "shared" },
+      "problemMatcher": []
+    }
+  ],
+
+  "inputs": [
+    {
+      "id": "mode",
+      "type": "pickString",
+      "description": "무엇을 실행할까?",
+      "default": "--check",
+      "options": [
+        {
+          "label": "① 상태 확인 — DB 접속과 채워진 건수 (API 호출 없음)",
+          "value": "--check"
+        },
+        {
+          "label": "② 19번 전 기간 — 4개 유형 한 번에, DB 안 건드림",
+          "value": "--child-id 19 --all-months --dry-run --force"
+        },
+        {
+          "label": "③ 19번 전 기간 + 프롬프트 출력 — 프롬프트 수정 확인용",
+          "value": "--child-id 19 --all-months --dry-run --force --show-prompt"
+        },
+        {
+          "label": "④ 9종 샘플 — DB 없이 유형별 결과 (가짜 데이터)",
+          "value": "--sample"
+        },
+        {
+          "label": "⑤ 9종 샘플 (gpt-4o-mini) — 모델 비교용",
+          "value": "--sample --model gpt-4o-mini"
+        },
+        {
+          "label": "⑥ 지난달 전체 — DB 안 건드림",
+          "value": "--dry-run --force"
+        },
+        {
+          "label": "⑦ 지난달 전체 — 실제 UPDATE ⚠",
+          "value": "--force"
+        },
+        {
+          "label": "⑧ 전 기간 전원 — 실제 UPDATE ⚠⚠",
+          "value": "--all-months --force"
+        }
+      ]
+    },
+    {
+      "id": "freeArgs",
+      "type": "promptString",
+      "description": "옵션을 직접 입력 (예: --year 2026 --month 5 --child-id 19 --dry-run)",
+      "default": "--check"
+    }
+  ]
+}

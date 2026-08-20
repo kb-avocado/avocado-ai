@@ -1,0 +1,22 @@
+[project]
+name = "avocado-ai"
+version = "0.1.0"
+description = "월간 소비 리포트에 AI 조언(아이용/보호자용)을 채워 넣는 배치"
+requires-python = ">=3.11"
+dependencies = [
+    "openai>=1.60",
+    "PyMySQL>=1.1",
+    "python-dotenv>=1.0",
+    # Windows 에는 시스템 tz DB 가 없어서 ZoneInfo("Asia/Seoul") 이 실패한다
+    "tzdata>=2024.1; sys_platform == 'win32'",
+]
+
+[project.scripts]
+avocado-ai = "avocado_ai.main:main"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]

@@ -1,0 +1,27 @@
+# 환경변수 — DB 계정, OpenAI API 키. 절대 커밋 금지
+.env
+.env.local
+
+# 온보딩 문서는 레포 밖(../ONBOARDING.md)에 둔다
+ONBOARDING.md
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+
+# 생성 결과 로그
+out/
+*.log
+
+# IDE
+.idea/
+# 디렉터리를 통째로 막으면 git 이 안으로 안 들어가서 아래 예외가 안 먹는다.
+# 그래서 .vscode/ 가 아니라 .vscode/* 로 적는다.
+.vscode/*
+# 실행 작업 목록은 팀에서 같이 쓴다
+!.vscode/tasks.json
