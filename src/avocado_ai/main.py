@@ -9,6 +9,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import logging
 import sys
 from dataclasses import replace
@@ -18,18 +19,53 @@ from zoneinfo import ZoneInfo
 
 from . import config as config_module
 from . import db, repository
-from .generator import AdviceGenerationError, build_client, generate
+from .generator import AdviceGenerationError, Usage, build_client, generate
 from .prompt import build_system_prompt, build_user_prompt, suggestion_direction
 
 SEOUL = ZoneInfo("Asia/Seoul")
 
 log = logging.getLogger("avocado_ai")
 
+# 이번 실행에서 쓴 토큰 총합. 성공·실패 가리지 않고 호출한 만큼 쌓는다.
+TOTAL_USAGE = Usage()
+
 
 def previous_month_in_seoul() -> tuple[int, int]:
     """기본 대상은 '지난달'. 배치가 매월 1일에 도는 걸 전제로 한다."""
     now = datetime.now(SEOUL)
     return repository.previous_year_month(now.year, now.month)
+
+
+def _prompt_fingerprint(cfg: config_module.Config) -> str:
+    """system 프롬프트 내용의 짧은 해시.
+
+    프롬프트를 고쳐가며 결과를 기록할 때, 캡처만 보고도 어느 판본인지 구분하려고 찍는다.
+    내용이 한 글자라도 바뀌면 값이 달라진다.
+    """
+    body = build_system_prompt(cfg.advice).encode("utf-8")
+    return hashlib.sha256(body).hexdigest()[:8]
+
+
+def _print_run_header(cfg: config_module.Config, argv: list[str]) -> datetime:
+    """실행 시각과 조건을 맨 위에 찍는다. 캡처 한 장에 맥락이 남도록."""
+    started = datetime.now(SEOUL)
+    print("=" * 70)
+    print(f" avocado-ai   {started:%Y-%m-%d %H:%M:%S} (KST)")
+    print(f" 모델 {cfg.openai.model}   프롬프트 #{_prompt_fingerprint(cfg)}")
+    print(f" 옵션 {' '.join(argv) if argv else '(없음)'}")
+    print("=" * 70)
+    return started
+
+
+def _print_run_footer(started: datetime) -> None:
+    """긴 출력은 헤더가 스크롤로 밀려나므로 끝에도 한 번 더 찍는다."""
+    ended = datetime.now(SEOUL)
+    elapsed = (ended - started).total_seconds()
+    print("-" * 70)
+    print(f" 종료 {ended:%Y-%m-%d %H:%M:%S} (KST)   소요 {elapsed:.1f}초")
+    if TOTAL_USAGE.calls:
+        print(f" 토큰 {TOTAL_USAGE.summary()}")
+    print("-" * 70)
 
 
 # ── --sample 용 가짜 입력 ──────────────────────────────────────────
@@ -125,6 +161,7 @@ def _print_advice(row: dict[str, Any], advice: Any) -> None:
         print(f"  (재시도 {advice.attempts}회)")
     for w in advice.warnings:
         print(f"  ! {w}")
+    print(f"  토큰 {advice.usage.summary()}")
 
 
 # ── 명령별 동작 ────────────────────────────────────────────────────
@@ -195,8 +232,10 @@ def cmd_sample(cfg: config_module.Config, show_prompt: bool) -> int:
         try:
             advice = generate(client, cfg.openai, cfg.advice, row)
         except AdviceGenerationError as exc:
-            print(f"  [실패] {exc}\n")
+            TOTAL_USAGE.merge(exc.usage)
+            print(f"  [실패] {exc}  (토큰 {exc.usage.summary()})\n")
             continue
+        TOTAL_USAGE.merge(advice.usage)
         _print_advice(row, advice)
         print()
     return 0
@@ -243,10 +282,12 @@ def cmd_run(cfg: config_module.Config, args: argparse.Namespace) -> int:
                 advice = generate(client, cfg.openai, cfg.advice, row)
             except AdviceGenerationError as exc:
                 # 실패한 행은 NULL 로 남긴다. 다음 실행 때 다시 대상이 된다.
-                print(f"  [실패] {exc} — 컬럼은 NULL 로 남긴다\n")
+                TOTAL_USAGE.merge(exc.usage)
+                print(f"  [실패] {exc} — 컬럼은 NULL 로 남긴다  (토큰 {exc.usage.summary()})\n")
                 failed += 1
                 continue
 
+            TOTAL_USAGE.merge(advice.usage)
             _print_advice(row, advice)
             if not args.dry_run:
                 repository.update_advice(conn, row["id"], advice.child_advice, advice.parent_advice)
@@ -302,15 +343,20 @@ def main() -> int:
     if args.model:
         cfg = replace(cfg, openai=replace(cfg.openai, model=args.model))
 
-    if args.check:
-        return cmd_check(cfg)
-    if args.sample:
-        return cmd_sample(cfg, args.show_prompt)
     if (args.year is None) != (args.month is None):
         parser.error("--year 와 --month 는 같이 준다")
     if args.all_months and (args.year or args.month):
         parser.error("--all-months 는 --year/--month 와 같이 쓸 수 없다")
-    return cmd_run(cfg, args)
+
+    started = _print_run_header(cfg, sys.argv[1:])
+    try:
+        if args.check:
+            return cmd_check(cfg)
+        if args.sample:
+            return cmd_sample(cfg, args.show_prompt)
+        return cmd_run(cfg, args)
+    finally:
+        _print_run_footer(started)
 
 
 if __name__ == "__main__":
