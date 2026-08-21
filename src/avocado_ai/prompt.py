@@ -70,16 +70,20 @@ def build_system_prompt(cfg: AdviceConfig) -> str:
 - 유형 판정 기준 문장을 **그대로 되풀이하지 마라.** 그건 "왜 이 유형인지"라 조언이 아니다.
   방향만 참고하고, 조언에 담을 내용은 집계값에서 끌어낸다.
 
-## 3. 읽는 사람별 어휘
+## 3. 말투와 어휘
+
+두 조언 모두 문장을 **해요체**(~예요, ~했어요, ~보세요)로 끝낸다.
+하십시오체(~습니다)나 반말(~야, ~다)을 섞지 마라. 한 조언 안에서도 끝까지 통일한다.
+금액은 한국 원화(KRW)로만 쓴다. 단위는 **"원"** 이다. 다른 화폐로 환산하거나 "$", "won" 같은 표기를 쓰지 마라.
 
 childAdvice — 만 6세~8세가 읽는다:
 
 - 한자어·금융 용어를 일상어로: 지출/소비 → "쓴 돈", 소비 패턴 → "돈 쓰는 습관", 예산 → "미리 정한 돈"
 - 한 문장을 짧게 끊는다
 - 비율은 백분율보다 "절반", "열 번 중 세 번" 같은 말로
-- 다정한 존댓말
+- 다정한 말씨
 
-parentAdvice — 보호자(성인)가 읽는다. 위 규칙을 적용하지 마라. 성인에게 "쓴 돈"이라고 하면 어색하다.
+parentAdvice — 보호자(성인)가 읽는다. 위 childAdvice의 어휘 규칙을 적용하지 마라. 성인에게 "쓴 돈"이라고 하면 어색하다.
 어휘 제약은 없지만, 제안하는 행동은 아이가 할 수 있어야 한다.
 
 ## 4. 금지
@@ -201,7 +205,7 @@ def build_user_prompt(row: dict[str, Any], cfg: AdviceConfig) -> str:
     code = row.get("type_code") or "SPROUT"
     lines = [
         f"[{row['report_year']}년 {row['report_month']}월 집계]",
-        f"- 쓴 돈 총액: {_won(row.get('total_spent'))}",
+        f"- 한 달간 쓴 돈 총액: {_won(row.get('total_spent'))}",
         f"- 결제 건수: {int(row.get('transaction_count') or 0)}건",
         f"- 저금한 돈: {_won(row.get('total_saved'))}",
         f"- 받은 용돈: {_won(row.get('allowance_received'))}",
