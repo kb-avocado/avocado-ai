@@ -29,20 +29,20 @@ _TYPE_CRITERIA_FALLBACK: dict[str, str] = {
 # 유형별 제안 방향 (ONBOARDING 7절 표). 만 6세가 할 수 있는 행동으로 맞춰져 있다.
 # 월 단위 → 주/일 단위, 금액 기준 → 횟수 기준, 추상적 규칙 → 눈에 보이는 행동.
 SUGGESTION_DIRECTION: dict[str, str] = {
-    "SAVING_DREAMER": "다음에 모을 것을 아이가 직접 고르게 하기",
-    "ZERO_SPENDING": "모아둔 용돈으로 갖고 싶은 것 하나를 말해보게 하기",
-    "FREQUENT_SPARROW": "요일 하나를 정해 그날은 쓰지 않기 (달력에 표시하면 더 좋다)",
-    "BIG_SPENDER": "갖고 싶은 걸 종이에 적어두고 다음에 다시 보기",
-    "CAREFUL_OWL": "무엇을 참았는지 물어보고 그 판단을 인정해주기",
-    "ONE_STORE_SNIPER": "그 가게에 일주일에 몇 번 갈지 함께 정하기",
-    "SMALL_SAVER": "아낀 돈으로 하고 싶은 것 하나를 함께 정하기",
-    "SPROUT": "다음 달에 해볼 약속 하나를 아이가 고르게 하기",
+    "SAVING_DREAMER": "목표 달성 축하해준다. 저축을 잘했다는 사실에서 끝내지 말고, 모은 돈과 앞으로의 목표를 연결한다.",
+    "ZERO_SPENDING": "앱 방문 유도(출석체크) 및 소비/저축의 가치 전달, 돈을 쓰지 않는 것 자체가 목표가 되지 않도록 한다.",
+    "FREQUENT_SPARROW": "자주 쓴다는 사실보다, 자주 쓰면서 실제로 얼마를 썼는지 돌아보게 한다. + 지출 TOP 3 장소 인지 및 지출 통제 챌린지",
+    "BIG_SPENDER": "지출 TOP 3 분석을 통한 큰 지출의 패턴 파악 및 구매 전 저금통 기능을 활용해 '생각 시간' 가질 수 있도록 유도",
+    "CAREFUL_OWL": "올바른 소비 습관 칭찬 + 시드머니를 통한 이자/금융 개념 교육, 확장",
+    "ONE_STORE_SNIPER": "지출 TOP 3 데이터를 통한 몰입성 소비 인지, (다른 카테고리로의 소비 경험 확장)",
+    "SMALL_SAVER": "알뜰하게 남긴 멋진 용돈, 이번 달엔 어떻게 해볼까? 차곡차곡 모으기/나를 위한 선물(소소한 보상 소비) 제안",
+    "SPROUT": "유형 지정 대신 '이번 달 리포트 데이터' 요약 제공을 통해 자신의 스타일 탐색 유도",
     # ROLLER_COASTER 는 증감 방향에 따라 갈리므로 아래 함수에서 따로 만든다.
 }
 
-_ROLLER_COASTER_UP = "이번 달에 무엇을 샀는지 하나만 떠올려보게 하기"
-_ROLLER_COASTER_DOWN = "지난달보다 아낀 점을 구체적으로 칭찬해주기"
-_ROLLER_COASTER_NO_BASE = "이번 달이 첫 기록이라는 점을 알려주고, 다음 달에 해볼 약속 하나 정하기"
+_ROLLER_COASTER_UP = "지출 균형 맞추기 및 정기 예산/저금통 활용, 왜 늘었는지 돌아보도록 유도"
+_ROLLER_COASTER_DOWN = "지출 균형 맞추기 및 정기 예산/저금통 활용, 칭찬, 왜 줄었는지 돌아보도록 유도"
+
 
 
 def build_system_prompt(cfg: AdviceConfig) -> str:
